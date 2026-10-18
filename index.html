@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Astro</title>
+<meta name="description" content="Astro：星座 × 血型性格分析與契合度">
+<meta name="theme-color" content="#1f2a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Astro">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);color-scheme:light}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@500;700;900&family=Noto+Sans+TC:wght@400;500;700&display=swap">
+<style>
+/* Layout: 左側為「查詢卡」，右側為一張可翻閱的性格帖；手機上下堆疊 */
+:root{
+  --bg:#eef0f4; --paper:#fbfbfd; --ink:#1d2340; --muted:#5d6380; --line:#d6d9e4;
+  --night:#1f2a5c; --blood:#c2354a; --gold:#b7892c; --soft:#e4e7f2;
+  --fire:#d2563a; --earth:#8a7a3a; --air:#3f8aa8; --water:#3a5fb8;
+  --display:"Noto Serif TC","Songti TC","PMingLiU",serif;
+  --body:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0f1224; --paper:#181c33; --ink:#e7e9f5; --muted:#9aa0bf; --line:#2c3255;
+  --night:#9fb0ff; --blood:#ef6b7d; --gold:#e1b65a; --soft:#22274a;
+  --fire:#f0805f; --earth:#c9b468; --air:#6cc0dd; --water:#86a3ff; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0f1224; --paper:#181c33; --ink:#e7e9f5; --muted:#9aa0bf; --line:#2c3255;
+  --night:#9fb0ff; --blood:#ef6b7d; --gold:#e1b65a; --soft:#22274a;
+  --fire:#f0805f; --earth:#c9b468; --air:#6cc0dd; --water:#86a3ff; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.7;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1040px;margin:0 auto;display:grid;gap:20px}
+header h1{font-family:var(--display);font-weight:900;font-size:clamp(28px,6vw,40px);margin:0;letter-spacing:.06em;line-height:1.2}
+header h1 span{color:var(--blood)}
+header p{margin:4px 0 0;color:var(--muted);font-size:14px}
+.cols{display:grid;grid-template-columns:320px 1fr;gap:20px;align-items:start}
+@media (max-width:820px){.cols{grid-template-columns:1fr}}
+.panel{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px;display:grid;gap:16px;min-width:0}
+.lbl{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:700}
+.field{display:grid;gap:8px}
+input[type=date],select{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+.signs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.signs button,.bloods button{font:inherit;cursor:pointer;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:6px 2px;display:grid;justify-items:center;line-height:1.2}
+.signs button b{font-family:var(--display);font-size:20px;font-weight:500}
+.signs button small{font-size:11px;color:var(--muted)}
+.signs button[aria-pressed=true]{background:var(--night);color:var(--paper);border-color:var(--night)}
+.signs button[aria-pressed=true] small{color:var(--paper);opacity:.8}
+.bloods{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.bloods button{padding:10px 0;font-family:var(--display);font-weight:700;font-size:18px}
+.bloods button[aria-pressed=true]{background:var(--blood);color:#fff;border-color:var(--blood)}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+.hint{font-size:12px;color:var(--muted);margin:0}
+/* result */
+.card{background:var(--paper);border:1px solid var(--line);border-radius:14px;overflow:hidden;min-width:0}
+.hero{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center;padding:22px;background:var(--soft);border-bottom:1px solid var(--line)}
+.seal{width:92px;height:92px;border-radius:50%;display:grid;place-items:center;position:relative;border:2px solid var(--night);color:var(--night)}
+.seal b{font-family:var(--display);font-size:44px;font-weight:500;line-height:1}
+.seal i{position:absolute;right:-6px;bottom:-6px;font-style:normal;background:var(--blood);color:#fff;font-family:var(--display);font-weight:900;font-size:15px;min-width:36px;height:36px;border-radius:50%;display:grid;place-items:center;border:3px solid var(--soft)}
+.hero h2{font-family:var(--display);font-size:clamp(22px,4.6vw,30px);margin:0;line-height:1.3;text-wrap:balance}
+.meta{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{font-size:12px;padding:2px 10px;border-radius:99px;border:1px solid var(--line);background:var(--paper);color:var(--muted)}
+.chip.el{color:#fff;border-color:transparent}
+.body{padding:22px;display:grid;gap:22px}
+.lead{font-size:16px;margin:0;max-width:62ch}
+.kws{display:flex;flex-wrap:wrap;gap:6px}
+.kws span{font-family:var(--display);font-weight:700;padding:3px 12px;border-radius:6px;background:var(--soft);color:var(--night)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:560px){.grid2{grid-template-columns:1fr}}
+.sec h3{font-family:var(--display);font-size:16px;margin:0 0 6px;display:flex;align-items:center;gap:8px}
+.sec h3::before{content:"";width:8px;height:8px;border-radius:2px;background:var(--gold);transform:rotate(45deg)}
+.sec p,.sec ul{margin:0;color:var(--ink)}
+.sec ul{padding-left:1.2em}
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:4.5em 1fr 2.4em;gap:10px;align-items:center;font-size:13px}
+.bar .tr{height:8px;background:var(--soft);border-radius:99px;overflow:hidden}
+.bar .fl{height:100%;background:var(--night);border-radius:99px;transition:width .5s ease}
+.bar em{font-style:normal;text-align:right;font-variant-numeric:tabular-nums;color:var(--muted)}
+.lucky{display:flex;flex-wrap:wrap;gap:10px 20px;font-size:14px}
+.lucky b{color:var(--muted);font-weight:500;margin-right:6px}
+.sw{display:inline-block;width:12px;height:12px;border-radius:3px;vertical-align:-1px;margin-right:4px;border:1px solid var(--line)}
+/* match */
+.match{border-top:1px dashed var(--line);padding-top:20px;display:grid;gap:12px}
+.mrow{display:grid;grid-template-columns:1fr 110px;gap:8px}
+.score{display:grid;grid-template-columns:auto 1fr;gap:16px;align-items:center;background:var(--soft);border-radius:12px;padding:14px 16px}
+.score .n{font-family:var(--display);font-weight:900;font-size:40px;line-height:1;color:var(--blood);font-variant-numeric:tabular-nums}
+.score .n small{font-size:16px;color:var(--muted)}
+.score p{margin:0;font-size:14px}
+.score strong{font-family:var(--display)}
+.foot{font-size:12px;color:var(--muted);text-align:center;margin:0}
+@media (prefers-reduced-motion:reduce){.bar .fl{transition:none}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Astro<span>.</span></h1>
+    <p>星座 × 血型 性格帖。選擇星座與血型，看兩者疊加出的個性輪廓，還能測測與對方的契合度。</p>
+  </header>
+
+  <div class="cols">
+    <section class="panel" aria-label="輸入">
+      <div class="field">
+        <label class="lbl" for="bday">輸入生日自動判斷星座</label>
+        <input type="date" id="bday">
+      </div>
+      <div class="field">
+        <span class="lbl">或直接選星座</span>
+        <div class="signs" id="signs"></div>
+      </div>
+      <div class="field">
+        <span class="lbl">血型</span>
+        <div class="bloods" id="bloods"></div>
+      </div>
+      <p class="hint">目前顯示為範例組合，點選即可切換，選擇會記在這台裝置上。</p>
+    </section>
+
+    <article class="card" id="result" aria-live="polite"></article>
+  </div>
+
+  <p class="foot">星座與血型性格說法屬於流行文化，僅供娛樂與聊天話題，並無科學根據。</p>
+</div>
+
+<script>
+const EL={fire:{n:"火象",c:"var(--fire)"},earth:{n:"土象",c:"var(--earth)"},air:{n:"風象",c:"var(--air)"},water:{n:"水象",c:"var(--water)"}};
+// stats: 行動力 感性 理性 社交 穩定
+const SIGNS=[
+ {k:"aries",n:"牡羊座",g:"♈",d:"3/21–4/19",s:[3,21],el:"fire",p:"火星",adj:"衝勁十足的",kw:["直率","勇敢","急性子"],core:"牡羊座是黃道的起點，做事憑直覺先衝再說，喜歡當第一個嘗試的人。",str:["行動快，不拖泥帶水","遇到困難敢正面迎擊","情緒來得快去得也快，不記仇"],weak:["耐性不足，容易虎頭蛇尾","說話太直，常不自覺得罪人"],love:"喜歡主動追求，熱烈直接；最怕關係變得一成不變。",work:"適合需要開創、衝業績、帶頭搶先的角色。",st:[92,55,48,70,38],lc:["正紅","#d0342c"],ln:9},
+ {k:"taurus",n:"金牛座",g:"♉",d:"4/20–5/20",s:[4,20],el:"earth",p:"金星",adj:"沉穩踏實的",kw:["務實","固執","重享受"],core:"金牛座重視安全感與實在的回報，做決定慢，但一旦決定就很難動搖。",str:["有耐心，能長期堅持","理財觀念好，重視品質","可靠，答應的事會做到"],weak:["固執，不喜歡被催","面對改變反應較慢"],love:"慢熱型，用行動和日常照顧表達感情，追求長久。",work:"適合財務、設計、需要精細累積成果的工作。",st:[45,62,60,52,92],lc:["草綠","#5f8f4e"],ln:6},
+ {k:"gemini",n:"雙子座",g:"♊",d:"5/21–6/21",s:[5,21],el:"air",p:"水星",adj:"機智多變的",kw:["好奇","健談","善變"],core:"雙子座腦筋轉得快，興趣廣泛，什麼都想知道一點，是聊天場合的靈魂人物。",str:["反應快，學習能力強","幽默，很會帶動氣氛","適應新環境很快"],weak:["注意力容易分散","三分鐘熱度，計畫常改"],love:"需要聊得來的對象，心靈上的交流比浪漫儀式更重要。",work:"適合媒體、業務、公關等需要大量溝通的工作。",st:[72,45,74,90,32],lc:["檸檬黃","#e0b81f"],ln:5},
+ {k:"cancer",n:"巨蟹座",g:"♋",d:"6/22–7/22",s:[6,22],el:"water",p:"月亮",adj:"溫柔顧家的",kw:["體貼","念舊","敏感"],core:"巨蟹座外殼堅硬、內心柔軟，最在意家人與熟悉的人，記性特別好。",str:["很會照顧人，有同理心","重感情，對朋友忠誠","直覺準，能察覺他人情緒"],weak:["情緒起伏大，容易受傷","缺乏安全感時會退縮"],love:"渴望穩定的歸屬感，付出很多，也希望被細心回應。",work:"適合教育、照護、餐飲、人資等貼近人的工作。",st:[48,94,50,62,70],lc:["珍珠白","#d9d6cc"],ln:2},
+ {k:"leo",n:"獅子座",g:"♌",d:"7/23–8/22",s:[7,23],el:"fire",p:"太陽",adj:"光芒四射的",kw:["自信","大方","愛面子"],core:"獅子座天生有舞台感，喜歡被看見，也願意照顧身邊的人，很有大哥大姊風範。",str:["自信有魅力，能鼓舞他人","慷慨熱心，講義氣","有領導力，敢扛責任"],weak:["好面子，不太認錯","需要被肯定，冷落時會不高興"],love:"喜歡轟轟烈烈，也很寵另一半，但需要對方的欣賞與讚美。",work:"適合管理、表演、品牌、需要站上台面的角色。",st:[85,68,55,88,58],lc:["金黃","#e09a1a"],ln:1},
+ {k:"virgo",n:"處女座",g:"♍",d:"8/23–9/22",s:[8,23],el:"earth",p:"水星",adj:"細膩周到的",kw:["完美主義","分析","謙虛"],core:"處女座在意細節，善於整理與改進，看到問題就忍不住想修好。",str:["做事嚴謹，品質穩定","觀察入微，善於分析","默默幫忙，不求張揚"],weak:["容易焦慮、對自己太嚴","挑剔，讓人覺得有壓力"],love:"不擅長甜言蜜語，用實際的照顧與安排表達心意。",work:"適合研究、編輯、會計、品管、醫療等精細工作。",st:[58,52,90,48,80],lc:["灰褐","#9a8b74"],ln:5},
+ {k:"libra",n:"天秤座",g:"♎",d:"9/23–10/23",s:[9,23],el:"air",p:"金星",adj:"優雅圓融的",kw:["和諧","審美","猶豫"],core:"天秤座追求平衡與公平，品味好，擅長在不同立場之間找到讓大家都舒服的做法。",str:["社交手腕好，人緣佳","審美能力強","講道理，處事公正"],weak:["選擇困難，怕做錯決定","為了和諧，容易委屈自己"],love:"重視相處的氣氛與禮貌，喜歡有質感、互相尊重的關係。",work:"適合設計、法律、外交、協調型的職位。",st:[55,66,72,92,55],lc:["粉藍","#8fb3d6"],ln:6},
+ {k:"scorpio",n:"天蠍座",g:"♏",d:"10/24–11/22",s:[10,24],el:"water",p:"冥王星",adj:"深沉專注的",kw:["洞察","執著","神秘"],core:"天蠍座情感濃烈但不輕易外露，做事專注到底，看人看事都想看穿本質。",str:["意志力強，能堅持到底","洞察力佳，不易被騙","對認定的人非常忠誠"],weak:["佔有慾強，容易猜疑","受傷後很難原諒"],love:"要嘛不愛，要愛就全心投入，最無法接受背叛。",work:"適合研究、調查、心理、投資等需要深挖的工作。",st:[70,86,76,45,72],lc:["酒紅","#7a1f3a"],ln:8},
+ {k:"sagittarius",n:"射手座",g:"♐",d:"11/23–12/21",s:[11,23],el:"fire",p:"木星",adj:"自由樂觀的",kw:["冒險","樂觀","坦率"],core:"射手座熱愛自由與探索，喜歡旅行、學新東西，對人生抱持樂觀態度。",str:["樂觀開朗，感染力強","視野開闊，喜歡學習","坦誠不做作"],weak:["不喜歡被約束，承諾感較弱","說話直，有時太隨性"],love:"希望關係像好朋友一樣輕鬆，有空間也有共同冒險。",work:"適合旅遊、教育、出版、國際業務等開闊型工作。",st:[86,58,62,84,35],lc:["紫羅蘭","#7b5ea7"],ln:3},
+ {k:"capricorn",n:"摩羯座",g:"♑",d:"12/22–1/19",s:[12,22],el:"earth",p:"土星",adj:"腳踏實地的",kw:["自律","目標","務實"],core:"摩羯座目標明確，有耐力也有規劃，習慣一步一步往上爬，成熟得比同齡人早。",str:["責任感強，值得信賴","自律，能長期規劃","遇到壓力也不輕易放棄"],weak:["太嚴肅，不擅長放鬆","把工作看得比感受重要"],love:"慢熱又內斂，重視承諾，相處越久越能感受到他的用心。",work:"適合管理、工程、金融、公職等講究長期累積的工作。",st:[66,42,84,50,94],lc:["深灰","#4b4f58"],ln:4},
+ {k:"aquarius",n:"水瓶座",g:"♒",d:"1/20–2/18",s:[1,20],el:"air",p:"天王星",adj:"獨立前衛的",kw:["創新","理性","特立獨行"],core:"水瓶座思想獨立，喜歡新奇的點子，重視友誼與理念，常有與眾不同的觀點。",str:["創意多，不受框架限制","重視公平與團體利益","交友廣，對人沒有偏見"],weak:["情感表達較疏離","堅持己見，不喜歡被管"],love:"需要精神上的契合與個人空間，先是朋友再是戀人。",work:"適合科技、研發、社會企業、創意相關工作。",st:[68,40,88,76,46],lc:["電光藍","#2f7fd8"],ln:4},
+ {k:"pisces",n:"雙魚座",g:"♓",d:"2/19–3/20",s:[2,19],el:"water",p:"海王星",adj:"浪漫感性的",kw:["想像力","同理","夢幻"],core:"雙魚座感受力強，富有想像力與藝術氣質，很容易被他人的情緒打動。",str:["溫柔包容，善解人意","藝術與創作天分高","直覺敏銳"],weak:["容易逃避現實","界線不清，常被情緒拖著走"],love:"浪漫又願意犧牲奉獻，渴望心靈相通的愛情。",work:"適合藝術、音樂、助人、療癒類型的工作。",st:[40,96,42,66,44],lc:["海綠","#4aa59a"],ln:7},
+];
+const BLOODS={
+ A:{role:"守序者",d:"細心、守規矩、在意他人觀感",mod:[-6,4,6,-4,10],add:"做事前習慣先想清楚，責任感重，有時會把壓力往自己身上攬。",tip:"給自己留點不完美的空間，事情不一定要百分之百準備好才開始。"},
+ B:{role:"自由人",d:"隨性、好奇、忠於自我",mod:[6,2,-2,4,-10],add:"想到就做，不太在意別人的眼光，專注在有興趣的事情上時能爆發驚人的能量。",tip:"重要的約定寫下來，別讓一時興起打亂身邊人的安排。"},
+ O:{role:"領頭羊",d:"熱情、直接、目標導向",mod:[8,0,0,6,4],add:"天生有大方的領袖氣質，重視自己人，認定目標就會帶著大家往前衝。",tip:"偶爾停下來聽聽少數意見，團隊會更願意跟著你。"},
+ AB:{role:"雙面家",d:"理性冷靜、多元矛盾",mod:[0,-4,10,-2,0],add:"同時擁有細膩與灑脫兩種面向，判斷冷靜，喜歡保留一點個人空間。",tip:"讓親近的人看到你真正的想法，他們會更懂得怎麼和你相處。"},
+};
+// 元素 × 血型 的疊加描述
+const BLEND={
+ fire:{A:"火象的熱度被 A 型的謹慎收斂，衝之前會先確認方向，是少見的「有計畫的行動派」。",B:"火象加上 B 型，熱情與隨性雙倍放大，點子多、動作快，最需要的是一位幫忙收尾的夥伴。",O:"火象遇上 O 型，領導力與衝勁最強的組合之一，很容易成為團體的核心。",AB:"火象的熱情配上 AB 型的冷靜，外表熱絡、內心有條理，懂得挑選值得投入的戰場。"},
+ earth:{A:"土象與 A 型都重視穩定與規則，可靠程度滿分，只是要小心太過保守而錯過機會。",B:"土象的踏實讓 B 型的奔放有了根，興趣可以慢慢累積成真本事。",O:"土象加 O 型，務實又有企圖心，擅長把長期目標一步步落地。",AB:"土象與 AB 型都偏理性，判斷精準、不感情用事，是很好的規劃者。"},
+ air:{A:"風象的靈活被 A 型的細心補強，溝通周到、想得多，也更在意別人的感受。",B:"風象加 B 型，思緒跳躍、創意滿點，是天生的點子王，記得把想法實際執行。",O:"風象配 O 型，社交能力出眾又有主見，很會串連人脈、號召大家。",AB:"風象與 AB 型都偏重腦袋思考，觀點獨到、有距離感，是冷靜的觀察家。"},
+ water:{A:"水象的敏感加上 A 型的細心，體貼到極致，但也容易想太多、委屈自己。",B:"水象配 B 型，感性又率真，情緒來得直接，充滿藝術家氣質。",O:"水象的溫柔遇上 O 型的熱情，是會保護身邊人的暖心角色。",AB:"水象的感性被 AB 型的理性平衡，外表平靜、內心豐富，直覺和邏輯並用。"},
+};
+const STAT=["行動力","感性","理性","社交","穩定"];
+// 契合度：元素關係 + 血型關係
+const ELM={fire:{fire:82,earth:58,air:90,water:52},earth:{fire:58,earth:80,air:55,water:90},air:{fire:90,earth:55,air:80,water:56},water:{fire:52,earth:90,air:56,water:84}};
+const BLM={A:{A:6,B:-4,O:8,AB:4},B:{A:-4,B:4,O:6,AB:8},O:{A:8,B:6,O:2,AB:0},AB:{A:4,B:8,O:0,AB:6}};
+
+const $=s=>document.querySelector(s);
+let st={sign:"libra",blood:"A",ps:"aquarius",pb:"O"};
+try{const v=JSON.parse(localStorage.getItem("sbx")||"null");if(v&&v.sign)st={...st,...v}}catch(e){}
+const save=()=>{try{localStorage.setItem("sbx",JSON.stringify(st))}catch(e){}};
+
+function signOf(m,d){
+  const order=["capricorn","aquarius","pisces","aries","taurus","gemini","cancer","leo","virgo","libra","scorpio","sagittarius","capricorn"];
+  const cut=[20,19,21,20,21,22,23,23,23,24,23,22]; // 每月星座交界日
+  return d>=cut[m-1]?order[m]:order[m-1];}
+
+function buildPickers(){
+  $("#signs").innerHTML=SIGNS.map(s=>`<button type="button" id="sg-${s.k}" data-k="${s.k}" aria-pressed="false" title="${s.n} ${s.d}"><b>${s.g}</b><small>${s.n.replace("座","")}</small></button>`).join("");
+  $("#bloods").innerHTML=Object.keys(BLOODS).map(b=>`<button type="button" id="bl-${b}" data-b="${b}" aria-pressed="false">${b}</button>`).join("");
+  $("#signs").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.sign=b.dataset.k;render()};
+  $("#bloods").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.blood=b.dataset.b;render()};
+  $("#bday").onchange=e=>{const v=e.target.value;if(!v)return;const[,m,d]=v.split("-").map(Number);st.sign=signOf(m,d);render()};
+}
+
+function opts(sel){return SIGNS.map(s=>`<option value="${s.k}"${s.k===sel?" selected":""}>${s.g} ${s.n}</option>`).join("")}
+function bopts(sel){return Object.keys(BLOODS).map(b=>`<option value="${b}"${b===sel?" selected":""}>${b} 型</option>`).join("")}
+
+function matchText(sc,a,b){
+  const same=a.el===b.el, el=EL[a.el].n+"與"+EL[b.el].n;
+  let t=sc>=88?"天作之合":sc>=78?"相處融洽":sc>=66?"需要磨合":"差異很大";
+  let why=same?`同為${EL[a.el].n}，價值觀相近，默契來得快。`:
+    ELM[a.el][b.el]>=88?`${el}互相成就，一方點子一方落實，越處越順。`:
+    ELM[a.el][b.el]<=56?`${el}節奏不同，一個快一個慢，需要多一點體諒。`:`${el}步調略有差異，互補得好就是助力。`;
+  return {t,why};
+}
+
+function render(){
+  const s=SIGNS.find(x=>x.k===st.sign), bl=BLOODS[st.blood];
+  document.querySelectorAll("#signs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===st.sign));
+  document.querySelectorAll("#bloods button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.b===st.blood));
+  const stats=s.st.map((v,i)=>Math.max(15,Math.min(99,v+bl.mod[i])));
+  const ps=SIGNS.find(x=>x.k===st.ps), pb=BLOODS[st.pb];
+  let sc=ELM[s.el][ps.el]+BLM[st.blood][st.pb]; if(s.k===ps.k)sc-=3; sc=Math.max(40,Math.min(98,sc));
+  const mt=matchText(sc,s,ps);
+  const el=EL[s.el];
+  $("#result").innerHTML=`
+  <div class="hero">
+    <div class="seal" aria-hidden="true"><b>${s.g}</b><i>${st.blood}</i></div>
+    <div style="min-width:0">
+      <div class="lbl">${s.n} · ${st.blood} 型</div>
+      <h2>${s.adj}${bl.role}</h2>
+      <div class="meta"><span class="chip el" style="background:${el.c}">${el.n}</span><span class="chip">守護星 ${s.p}</span><span class="chip">${s.d}</span></div>
+    </div>
+  </div>
+  <div class="body">
+    <p class="lead">${s.core}${bl.add}</p>
+    <div class="kws">${[...s.kw,...bl.d.split("、").slice(0,2)].map(k=>`<span>${k}</span>`).join("")}</div>
+    <div class="sec"><h3>星座 × 血型 疊加</h3><p>${BLEND[s.el][st.blood]}</p></div>
+    <div class="grid2">
+      <div class="sec"><h3>個性優點</h3><ul>${s.str.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+      <div class="sec"><h3>需要留意</h3><ul>${s.weak.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+    </div>
+    <div class="grid2">
+      <div class="sec"><h3>感情</h3><p>${s.love}</p></div>
+      <div class="sec"><h3>工作</h3><p>${s.work}</p></div>
+    </div>
+    <div class="sec"><h3>性格指數</h3>
+      <div class="bars">${stats.map((v,i)=>`<div class="bar"><span>${STAT[i]}</span><div class="tr"><div class="fl" style="width:${v}%"></div></div><em>${v}</em></div>`).join("")}</div>
+    </div>
+    <div class="sec"><h3>給你的小提醒</h3><p>${bl.tip}</p></div>
+    <div class="lucky"><span><b>幸運色</b><span class="sw" style="background:${s.lc[1]}"></span>${s.lc[0]}</span><span><b>幸運數字</b>${s.ln}</span><span><b>同元素星座</b>${SIGNS.filter(x=>x.el===s.el&&x.k!==s.k).map(x=>x.n).join("、")}</span></div>
+
+    <div class="match">
+      <div class="sec"><h3>和對方的契合度</h3></div>
+      <div class="mrow">
+        <select id="ps" aria-label="對方星座">${opts(st.ps)}</select>
+        <select id="pb" aria-label="對方血型">${bopts(st.pb)}</select>
+      </div>
+      <div class="score"><div class="n">${sc}<small>%</small></div>
+        <p><strong>${mt.t}</strong>　${mt.why}${st.blood}型${bl.role}遇上${st.pb}型${pb.role}，${BLM[st.blood][st.pb]>=6?"血型個性互補，相處省力。":BLM[st.blood][st.pb]<=0?"做事步調不同，多溝通就能減少摩擦。":"彼此理解起來不困難。"}</p>
+      </div>
+    </div>
+  </div>`;
+  $("#ps").onchange=e=>{st.ps=e.target.value;render()};
+  $("#pb").onchange=e=>{st.pb=e.target.value;render()};
+  save();
+}
+buildPickers();render();
+</script>
+<script>
+if("serviceWorker" in navigator){addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}))}
+</script>
+</body>
+</html>
