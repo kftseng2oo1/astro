@@ -94,6 +94,42 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 .score p{margin:0;font-size:14px}
 .score strong{font-family:var(--display)}
 .foot{font-size:12px;color:var(--muted);text-align:center;margin:0}
+.tabs{display:flex;gap:4px;padding:0 22px;background:var(--soft);border-bottom:1px solid var(--line)}
+.tabs button{font:inherit;font-family:var(--display);font-weight:700;font-size:15px;cursor:pointer;background:none;border:0;color:var(--muted);padding:10px 14px;border-bottom:3px solid transparent;margin-bottom:-1px}
+.tabs button[aria-selected=true]{color:var(--night);border-bottom-color:var(--blood)}
+.hero{border-bottom:0}
+.seg{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--soft);padding:4px;border-radius:10px}
+.seg button{font:inherit;cursor:pointer;border:0;background:none;color:var(--muted);padding:7px 0;border-radius:7px;font-weight:500}
+.seg button[aria-selected=true]{background:var(--paper);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.ovr{display:grid;grid-template-columns:auto 1fr;gap:18px;align-items:center}
+.ring{--v:70;width:96px;height:96px;border-radius:50%;display:grid;place-items:center;align-content:center;background:radial-gradient(closest-side,var(--paper) 78%,transparent 79%),conic-gradient(var(--blood) calc(var(--v)*1%),var(--soft) 0)}
+.ring b{font-family:var(--display);font-size:32px;line-height:1;font-variant-numeric:tabular-nums}
+.ring small{font-size:11px;color:var(--muted);letter-spacing:.1em}
+.sky{margin:0 0 6px;font-size:13px;color:var(--muted)}
+.sky b{color:var(--night)}
+.cats{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:560px){.cats{grid-template-columns:1fr}}
+.cat{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;gap:4px}
+.cat .ch{display:flex;justify-content:space-between;align-items:center}
+.cat b{font-family:var(--display)}
+.stars{color:var(--gold);letter-spacing:2px}
+.cat p{margin:0;font-size:14px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tags span{padding:2px 10px;border-radius:6px;font-size:14px}
+.tags.yi span{background:var(--soft);color:var(--night)}
+.tags.ji span{border:1px solid var(--blood);color:var(--blood)}
+.wk{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;align-items:end}
+.wd{display:grid;gap:4px;justify-items:center;font-size:12px;color:var(--muted)}
+.wd em{font-style:normal;font-variant-numeric:tabular-nums}
+.wd .col{height:90px;width:100%;max-width:28px;background:var(--soft);border-radius:6px;display:flex;align-items:flex-end;overflow:hidden}
+.wd .col i{width:100%;background:var(--night);border-radius:6px}
+.wd.now span{color:var(--blood);font-weight:700}.wd.now .col i{background:var(--blood)}
+.mo{display:grid;grid-template-columns:repeat(7,1fr);gap:4px}
+.mo span{aspect-ratio:1;max-width:100%;display:grid;place-items:center;border-radius:6px;font-size:12px;font-variant-numeric:tabular-nums}
+.c.l0{background:var(--night);color:var(--paper)}.c.l1{background:var(--soft);color:var(--ink)}.c.l2{background:transparent;border:1px dashed var(--line);color:var(--muted)}
+.mo .now{outline:2px solid var(--blood);outline-offset:1px}
+.legend{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted)}
+.legend .c{width:12px;height:12px;border-radius:3px;display:inline-block;margin-left:6px}
 @media (prefers-reduced-motion:reduce){.bar .fl{transition:none}}
 </style>
 
@@ -102,7 +138,7 @@ button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid 
 <div class="wrap">
   <header>
     <h1>Astro<span>.</span></h1>
-    <p>星座 × 血型 性格帖。選擇星座與血型，看兩者疊加出的個性輪廓，還能測測與對方的契合度。</p>
+    <p>星座 × 血型 性格帖。選擇星座與血型，看兩者疊加出的個性輪廓、每日到每月的星座運勢，還能測測與對方的契合度。</p>
   </header>
 
   <div class="cols">
@@ -164,7 +200,7 @@ const ELM={fire:{fire:82,earth:58,air:90,water:52},earth:{fire:58,earth:80,air:5
 const BLM={A:{A:6,B:-4,O:8,AB:4},B:{A:-4,B:4,O:6,AB:8},O:{A:8,B:6,O:2,AB:0},AB:{A:4,B:8,O:0,AB:6}};
 
 const $=s=>document.querySelector(s);
-let st={sign:"libra",blood:"A",ps:"aquarius",pb:"O"};
+let st={sign:"libra",blood:"A",ps:"aquarius",pb:"O",tab:"luck",per:"today"};
 try{const v=JSON.parse(localStorage.getItem("sbx")||"null");if(v&&v.sign)st={...st,...v}}catch(e){}
 const save=()=>{try{localStorage.setItem("sbx",JSON.stringify(st))}catch(e){}};
 
@@ -193,6 +229,91 @@ function matchText(sc,a,b){
   return {t,why};
 }
 
+// ===== 運勢 =====
+const DAYMS=864e5;
+function hash(str){let h=2166136261;for(const c of str){h^=c.codePointAt(0);h=Math.imul(h,16777619)}return h>>>0}
+function rng(seed){let a=seed;return()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+// 月亮所在星座（簡化公式，誤差約 1–2 度）
+function moonIdx(dt){const d=(Date.UTC(dt.getFullYear(),dt.getMonth(),dt.getDate(),12)-Date.UTC(2000,0,1,12))/DAYMS;
+  const L=218.316+13.176396*d,M=(134.963+13.064993*d)*Math.PI/180;return Math.floor((((L+6.289*Math.sin(M))%360)+360)%360/30)}
+const HARM={same:8,good:6,bad:-6,meh:-3};
+function elRel(a,b){if(a===b)return"same";const g={fire:"air",air:"fire",earth:"water",water:"earth"};if(g[a]===b)return"good";
+  if((a==="fire"&&b==="water")||(a==="water"&&b==="fire")||(a==="earth"&&b==="air")||(a==="air"&&b==="earth"))return"bad";return"meh"}
+const ymd=d=>`${d.getFullYear()}-${d.getMonth()+1}-${d.getDate()}`;
+function dayScore(s,blood,dt){const r=rng(hash(s.k+blood+ymd(dt)));const mi=moonIdx(dt);let v=58+r()*28+HARM[elRel(s.el,SIGNS[mi].el)];
+  if(SIGNS[mi].k===s.k)v+=6;return Math.round(Math.max(38,Math.min(98,v)))}
+const lvl=v=>v>=80?0:v>=62?1:2;
+const POOL={
+ all:[["整體運勢明亮，想推進的事情很適合在這段時間開始。","狀態在線，貴人運也不錯，主動開口容易得到回應。","心情和效率都在高點，適合處理拖了一陣子的事。"],
+      ["運勢平穩，按部就班就能有收穫，不必急著求變。","小有起伏但整體順利，留意細節就能避開麻煩。","適合整理與規劃，把力氣放在已經在做的事上。"],
+      ["節奏偏慢，遇到卡關先休息，不要硬碰硬。","容易被瑣事分心，重要決定可以再多想一天。","情緒比較敏感，多給自己一點空間，早點休息。"]],
+ love:[["感情氣氛甜，單身者在聚會或朋友介紹中容易遇到聊得來的人。","和另一半默契好，適合安排一次約會或小旅行。","真誠表達心意，會得到溫暖的回應。"],
+       ["感情穩定，多一點日常關心比大驚喜更有用。","單身者桃花普通，先把自己的生活過好。","溝通時語氣放軟，能避免不必要的誤會。"],
+       ["容易因小事起口角，先聽完對方再回應。","對感情有點患得患失，不要急著要答案。","不適合翻舊帳，給彼此一點空間。"]],
+ work:[["工作表現亮眼，提案或面試都有不錯的機會。","思路清楚，適合處理需要判斷的關鍵任務。","與同事合作順利，團隊任務推進得很快。"],
+       ["工作量穩定，照計畫走就好，避免臨時答應太多事。","適合整理資料、改善流程，為下一步打底。","主管的要求較多，耐心溝通就能過關。"],
+       ["容易出現小疏漏，送出前多檢查一次。","進度可能被別人拖延，記得預留緩衝時間。","職場人際稍有摩擦，少說多做比較安全。"]],
+ money:[["財運不錯，正財穩定，也可能有意外的小收入。","適合檢視理財規劃，判斷比平常準確。","把錢花在學習或工具上，回報會比預期好。"],
+        ["收支平衡，日常開銷記得控制在預算內。","不宜衝動購物，想買的東西先放清單等兩天。","財運平平，穩健保守比追求高報酬好。"],
+        ["容易有計畫外的支出，借貸往來要謹慎。","投資消息多但不可靠，先觀望再決定。","錢包看緊一點，小額訂閱記得檢查。"]],
+ health:[["精神飽滿，適合開始新的運動習慣。","體力充沛，到戶外走走能讓心情更好。","睡眠品質佳，身體狀態不錯。"],
+         ["注意作息規律，別熬夜追劇。","久坐記得起身伸展，多喝水。","飲食清淡一點，腸胃會比較舒服。"],
+         ["容易疲倦，能早睡就早睡。","留意肩頸和眼睛的疲勞，適時休息。","天氣變化記得保暖，別讓小感冒找上門。"]],
+};
+const CATS=[["love","愛情"],["work","事業"],["money","財運"],["health","健康"]];
+const YI=["整理房間","聯絡老朋友","學新技能","運動流汗","做預算","早起散步","讀一本書","表達感謝","嘗試新餐廳","寫下目標","斷捨離","請教前輩"];
+const JI=["衝動消費","熬夜","翻舊帳","臨時改計畫","背後議論","過度承諾","拖延回覆","情緒化發言","借錢給人","硬撐不休息"];
+const COLORS=[["象牙白","#efe9d8"],["天空藍","#79aee0"],["薄荷綠","#7cc7a4"],["珊瑚橘","#ec8a68"],["薰衣草紫","#a993d6"],["酒紅","#8c2a43"],["金黃","#e0a826"],["墨綠","#2f5d4a"],["玫瑰粉","#e59ab0"],["深藍","#2a3f8c"]];
+const DIRS=["東","東南","南","西南","西","西北","北","東北"];
+const HOURS=["辰時 07–09","巳時 09–11","午時 11–13","未時 13–15","申時 15–17","酉時 17–19","戌時 19–21"];
+const BFT={A:"A 型的你照著計畫走最安心，今天把待辦清單排好就成功一半。",B:"B 型的你靈感多，抓住第一個念頭先動手，別想太久。",O:"O 型的你適合主動出擊，揪人一起做會更順。",AB:"AB 型的你保留一點獨處時間，判斷會更清楚。"};
+const WD=["日","一","二","三","四","五","六"];
+const stars=n=>"★".repeat(n)+"☆".repeat(5-n);
+
+function periodDays(p){const t=new Date();t.setHours(12,0,0,0);
+  if(p==="today")return[t];
+  if(p==="tomorrow")return[new Date(t.getTime()+DAYMS)];
+  if(p==="week"){const off=(t.getDay()+6)%7;const m=new Date(t.getTime()-off*DAYMS);return[...Array(7)].map((_,i)=>new Date(m.getTime()+i*DAYMS))}
+  const y=t.getFullYear(),mo=t.getMonth(),n=new Date(y,mo+1,0).getDate();return[...Array(n)].map((_,i)=>new Date(y,mo,i+1,12))}
+
+function fortuneHTML(s,blood){
+  const p=st.per||"today", days=periodDays(p), scores=days.map(d=>dayScore(s,blood,d));
+  const ov=Math.round(scores.reduce((a,b)=>a+b,0)/scores.length);
+  const key=p==="week"?"w"+ymd(days[0]):p==="month"?"m"+days[0].getFullYear()+"-"+days[0].getMonth():"d"+ymd(days[0]);
+  const r=rng(hash(s.k+blood+key+"f"));const pick=a=>a[Math.floor(r()*a.length)];
+  const L=lvl(ov);
+  const cats=CATS.map(([k,n])=>{const v=Math.max(30,Math.min(99,Math.round(ov+(r()-.5)*34)));return{k,n,v,st:Math.max(1,Math.min(5,Math.round(v/20))),t:pick(POOL[k][lvl(v)])}});
+  const yi=[...YI].sort(()=>r()-.5).slice(0,3), ji=[...JI].sort(()=>r()-.5).slice(0,2);
+  const col=pick(COLORS), num=1+Math.floor(r()*9), dir=pick(DIRS), hr=pick(HOURS);
+  const helper=SIGNS.filter(x=>elRel(s.el,x.el)==="good"||(x.el===s.el&&x.k!==s.k));const hp=helper[Math.floor(r()*helper.length)];
+  const fmt=d=>`${d.getMonth()+1}/${d.getDate()}`;
+  let sky="",chart="";
+  if(p==="today"||p==="tomorrow"){const m=SIGNS[moonIdx(days[0])],rel=elRel(s.el,m.el);
+    sky=`${fmt(days[0])}（${WD[days[0].getDay()]}）月亮行經 <b>${m.g} ${m.n}</b>，${m.k===s.k?"正好在你的星座，情緒與直覺都特別敏銳。":rel==="same"||rel==="good"?`與你同屬或相生的${EL[m.el].n}，氣場順。`:rel==="bad"?`${EL[m.el].n}與你的${EL[s.el].n}相沖，步調容易被打亂。`:"影響中性，照自己的節奏走就好。"}`;}
+  else{const best=days.map((d,i)=>[d,scores[i]]).sort((a,b)=>b[1]-a[1]).slice(0,3).sort((a,b)=>a[0]-b[0]);
+    const today=ymd(new Date());
+    sky=p==="week"?`本週 ${fmt(days[0])}–${fmt(days[6])}，運勢最旺的日子是 <b>${best.map(b=>fmt(b[0])+"（"+WD[b[0].getDay()]+"）").join("、")}</b>。`
+      :`${days[0].getMonth()+1} 月的好日子：<b>${best.map(b=>fmt(b[0])).join("、")}</b>，重要的事可以排在這幾天。`;
+    chart=p==="week"
+      ?`<div class="wk">${days.map((d,i)=>`<div class="wd${ymd(d)===today?" now":""}"><em>${scores[i]}</em><div class="col"><i style="height:${scores[i]}%"></i></div><span>${WD[d.getDay()]}</span></div>`).join("")}</div>`
+      :`<div class="mo">${[...Array((days[0].getDay()+6)%7)].map(()=>"<span></span>").join("")}${days.map((d,i)=>`<span class="c l${lvl(scores[i])}${ymd(d)===today?" now":""}" title="${fmt(d)} ${scores[i]} 分">${d.getDate()}</span>`).join("")}</div>
+        <div class="legend"><span class="c l0"></span>旺 <span class="c l1"></span>平 <span class="c l2"></span>低</div>`;}
+  const pers=[["today","今日"],["tomorrow","明日"],["week","本週"],["month","本月"]];
+  return `<div class="body">
+    <div class="seg" role="tablist" id="per">${pers.map(([k,n])=>`<button type="button" role="tab" id="per-${k}" data-p="${k}" aria-selected="${k===p}">${n}</button>`).join("")}</div>
+    <div class="ovr"><div class="ring" style="--v:${ov}"><b>${ov}</b><small>綜合</small></div>
+      <div style="min-width:0"><p class="sky">${sky}</p><p class="lead">${pick(POOL.all[L])}</p></div></div>
+    ${chart}
+    <div class="cats">${cats.map(c=>`<div class="cat"><div class="ch"><b>${c.n}</b><span class="stars" aria-label="${c.st} 顆星">${stars(c.st)}</span></div><p>${c.t}</p></div>`).join("")}</div>
+    <div class="grid2">
+      <div class="sec"><h3>宜</h3><div class="tags yi">${yi.map(x=>`<span>${x}</span>`).join("")}</div></div>
+      <div class="sec"><h3>忌</h3><div class="tags ji">${ji.map(x=>`<span>${x}</span>`).join("")}</div></div>
+    </div>
+    <div class="lucky"><span><b>幸運色</b><span class="sw" style="background:${col[1]}"></span>${col[0]}</span><span><b>幸運數字</b>${num}</span><span><b>吉方</b>${dir}</span><span><b>好時段</b>${hr}</span><span><b>貴人</b>${hp.g} ${hp.n}</span></div>
+    <div class="sec"><h3>血型加持</h3><p>${BFT[blood]}</p></div>
+  </div>`;
+}
+
 function render(){
   const s=SIGNS.find(x=>x.k===st.sign), bl=BLOODS[st.blood];
   document.querySelectorAll("#signs button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===st.sign));
@@ -202,6 +323,7 @@ function render(){
   let sc=ELM[s.el][ps.el]+BLM[st.blood][st.pb]; if(s.k===ps.k)sc-=3; sc=Math.max(40,Math.min(98,sc));
   const mt=matchText(sc,s,ps);
   const el=EL[s.el];
+  const tabs=`<div class="tabs" role="tablist" id="tabs"><button type="button" role="tab" id="tab-luck" data-t="luck" aria-selected="${st.tab==="luck"}">星座運勢</button><button type="button" role="tab" id="tab-pers" data-t="pers" aria-selected="${st.tab==="pers"}">個性分析</button></div>`;
   $("#result").innerHTML=`
   <div class="hero">
     <div class="seal" aria-hidden="true"><b>${s.g}</b><i>${st.blood}</i></div>
@@ -211,7 +333,7 @@ function render(){
       <div class="meta"><span class="chip el" style="background:${el.c}">${el.n}</span><span class="chip">守護星 ${s.p}</span><span class="chip">${s.d}</span></div>
     </div>
   </div>
-  <div class="body">
+`+tabs+(st.tab==="luck"?fortuneHTML(s,st.blood):`  <div class="body">
     <p class="lead">${s.core}${bl.add}</p>
     <div class="kws">${[...s.kw,...bl.d.split("、").slice(0,2)].map(k=>`<span>${k}</span>`).join("")}</div>
     <div class="sec"><h3>星座 × 血型 疊加</h3><p>${BLEND[s.el][st.blood]}</p></div>
@@ -239,7 +361,10 @@ function render(){
         <p><strong>${mt.t}</strong>　${mt.why}${st.blood}型${bl.role}遇上${st.pb}型${pb.role}，${BLM[st.blood][st.pb]>=6?"血型個性互補，相處省力。":BLM[st.blood][st.pb]<=0?"做事步調不同，多溝通就能減少摩擦。":"彼此理解起來不困難。"}</p>
       </div>
     </div>
-  </div>`;
+  </div>`);
+  $("#tabs").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.tab=b.dataset.t;render()};
+  if(st.tab==="luck"){$("#per").onclick=e=>{const b=e.target.closest("button");if(!b)return;st.per=b.dataset.p;render()};save();return}
+
   $("#ps").onchange=e=>{st.ps=e.target.value;render()};
   $("#pb").onchange=e=>{st.pb=e.target.value;render()};
   save();
