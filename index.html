@@ -276,6 +276,8 @@ const HOURS=["辰時 07–09","巳時 09–11","午時 11–13","未時 13–15"
 const BFT={A:"A 型的你照著計畫走最安心，今天把待辦清單排好就成功一半。",B:"B 型的你靈感多，抓住第一個念頭先動手，別想太久。",O:"O 型的你適合主動出擊，揪人一起做會更順。",AB:"AB 型的你保留一點獨處時間，判斷會更清楚。"};
 const WD=["日","一","二","三","四","五","六"];
 const stars=n=>"★".repeat(n)+"☆".repeat(5-n);
+// 用種子亂數做 Fisher–Yates 洗牌：不同瀏覽器結果一致（sort 搭配隨機比較函式會因瀏覽器的排序實作而不同）
+function shuffle(a,r){a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a}
 
 function periodDays(p){const t=new Date();t.setHours(12,0,0,0);
   if(p==="today")return[t];
@@ -321,7 +323,7 @@ function fortuneHTML(s,blood){
   const r=rng(hash(s.k+blood+key+"f"));const pick=a=>a[Math.floor(r()*a.length)];
   const L=lvl(ov);
   const cats=CATS.map(([k,n])=>{const v=Math.max(30,Math.min(99,Math.round(ov+(r()-.5)*34)));return{k,n,v,st:Math.max(1,Math.min(5,Math.round(v/20))),t:pick(POOL[k][lvl(v)])}});
-  const yi=[...YI].sort(()=>r()-.5).slice(0,3), ji=[...JI].sort(()=>r()-.5).slice(0,2);
+  const yi=shuffle(YI,r).slice(0,3), ji=shuffle(JI,r).slice(0,2);
   const col=pick(COLORS), num=1+Math.floor(r()*9), dir=pick(DIRS), hr=pick(HOURS);
   const helper=SIGNS.filter(x=>elRel(s.el,x.el)==="good"||(x.el===s.el&&x.k!==s.k));const hp=helper[Math.floor(r()*helper.length)];
   const fmt=d=>`${d.getMonth()+1}/${d.getDate()}`;
